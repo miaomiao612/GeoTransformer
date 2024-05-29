@@ -141,6 +141,29 @@ dataloader = DataLoader(dataset_train, batch_size=1, shuffle=True)
 
 
 ##############
+# delete alpha channel 
+folder_path = "/content/drive/MyDrive/yuhao_jia/sample_data/512"
+
+file_list = os.listdir(folder_path)
+
+
+for file_name in file_list:
+
+    file_path = os.path.join(folder_path, file_name)
+
+    if file_name.endswith(".tif"):
+
+        image = Image.open(file_path)
+
+        r, g, b, a = image.split()
+
+        rgb_image = Image.merge("RGB", (r, g, b))
+
+        new_file_name = file_name[:-4] + "_new.tif"
+        new_file_path = os.path.join(folder_path, new_file_name)
+        rgb_image.save(new_file_path)
+
+#################
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = Autoencoder(AutoencoderKL)
