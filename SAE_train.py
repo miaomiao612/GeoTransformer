@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset
 from PIL import Image
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import argparse
 import random
 import torch.nn.parallel
@@ -19,14 +19,10 @@ from diffusers import AutoencoderKL
 
 
 
-
-
-vae = AutoencoderKL.from_pretrained("CompVis/stable-diffusion-v1-4", subfolder="vae", low_cpu_mem_usage=True)
-
 class Autoencoder(AutoencoderKL):
     def __init__(self, config):
         super(Autoencoder, self).__init__()
-        self.vae = AutoencoderKL.from_pretrained("CompVis/stable-diffusion-v1-4", subfolder="vae", low_cpu_mem_usage=True)
+        self.vae = AutoencoderKL.from_pretrained("./stable-diffusion-v1-4", subfolder="vae", low_cpu_mem_usage=True)
 
         self.encoder = self.vae.encoder
         self.decoder = self.vae.decoder
@@ -82,23 +78,39 @@ class myLoss(nn.Module):
         lpips_loss = self.lpips_loss(reconstructed_images, original_images).mean()
 
         # KL divergence
-        kl_divergence = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+        kl_divergence = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp()) *0.01
 
         # Calculate absolute error for socioeconomic variables
         loss_variables = torch.mean(torch.abs(predicted_variables - true_variables))
 
         # Total loss
         total_loss = (1 - self.alpha) * (loss_images + kl_divergence + lpips_loss )+ self.alpha * loss_variables
-        return total_loss
+        return loss_images, lpips_loss, kl_divergence, loss_variables, total_loss
     
 
-#Dataloader    
+#Dataloader
+
+def filter_none(json_data):
+    filtered_data = {}
+    for key, value in json_data.items():
+        filtered_value = {}
+        for subkey, subvalue in value.items():
+            if subvalue is not None:
+                filtered_value[subkey] = subvalue
+        if filtered_value:
+            filtered_data[key] = filtered_value
+    return filtered_data
+
+with open('../ACS_results.json', 'r') as f:
+    data_info = json.load(f)
+
+filtered_data_info = filter_none(data_info)
+
 class Img_SC_Dataset(Dataset):
-    def __init__(self, image_dir, json_path, transform=None):
+    def __init__(self, image_dir, data_info, transform=None):
         self.image_dir = image_dir
         self.transform = transform
-        with open(json_path, 'r') as f:
-            self.data_info = json.load(f)
+        self.data_info = data_info
 
     def __len__(self):
         return len(self.data_info)
@@ -125,7 +137,9 @@ class Img_SC_Dataset(Dataset):
         socioeconomic_values = np.array(values, dtype=np.float32)
         min_val = np.min(socioeconomic_values)
         max_val = np.max(socioeconomic_values)
-        socioeconomic_values = (socioeconomic_values - min_val) / (max_val - min_val)
+        socioeconomic_values = (socioeconomic_values - min_val) / (max_val - min_val + 1e-8)
+        if np.isnan(socioeconomic_values).any():
+            print("警告: 数据中含有NaN!")
 
         return image, socioeconomic_values
 
@@ -135,14 +149,14 @@ transform = transforms.Compose([
       transforms.ToTensor(),
 ])
 
-dataset_train = Img_SC_Dataset(image_dir='...', json_path='...', transform=transform)
-dataloader = DataLoader(dataset_train, batch_size=1, shuffle=True)
+dataset_train = Img_SC_Dataset(image_dir='../rgb', data_info=filtered_data_info, transform=transform)
+dataloader = DataLoader(dataset_train, batch_size=2, shuffle=True)
 
 
 
 ##############
 # delete alpha channel 
-folder_path = "/content/drive/MyDrive/yuhao_jia/sample_data/512"
+folder_path = "../512"
 
 file_list = os.listdir(folder_path)
 
@@ -159,23 +173,31 @@ for file_name in file_list:
 
         rgb_image = Image.merge("RGB", (r, g, b))
 
-        new_file_name = file_name[:-4] + "_new.tif"
-        new_file_path = os.path.join(folder_path, new_file_name)
+        new_file_name = file_name
+        new_file_path = os.path.join("../rgb", new_file_name)
         rgb_image.save(new_file_path)
 
 #################
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = Autoencoder(AutoencoderKL)
+model = Autoencoder(AutoencoderKL).to(device)
 
-epochs = 100
-learning_rate = 0.0002
+
+epochs = 25
+learning_rate = 0.0005
 alpha = 0.5  
 criterion = myLoss(alpha=alpha).to(device)
 optimizer_AE = optim.Adam(model.parameters(), lr=learning_rate)
+scheduler = ReduceLROnPlateau(optimizer_AE, mode='min', factor=0.5, patience=3, verbose=True)
+
+
+ckpt = torch.load('model_epoch_20.pth')
+model.load_state_dict = ckpt['model_state_dict']
+curr_epoch = ckpt['epoch']
+
 
 # train
-for epoch in range(epochs):
+for epoch in range(curr_epoch, epochs):
     model.train()
    
 
@@ -192,13 +214,24 @@ for epoch in range(epochs):
        
         reconstructed_images, predicted_variables, mu, logvar = model(inputs)
         
-        loss = criterion(reconstructed_images, inputs, predicted_variables, true_variables, mu, logvar)
+        loss_images, lpips_loss, kl_divergence, loss_variables, total_loss = criterion(reconstructed_images, inputs, predicted_variables, true_variables, mu, logvar)
 
-        loss.backward()
+        total_loss.backward()
         optimizer_AE.step()
 
-        running_loss += loss.item()
-
-
+        running_loss += total_loss.item()
+        print("loss at ", i, "step:", total_loss.item(), loss_images.item(), lpips_loss.item(), kl_divergence.item(), loss_variables.item())
+        # break
+    scheduler.step(running_loss / len(dataloader))
     print(f"Epoch [{epoch + 1}/{epochs}], Loss: {running_loss / len(dataloader)}")
+    if (epoch + 1) % 5 == 0:
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer_AE.state_dict(),
+            'loss': running_loss / len(dataloader),
+        }, f'./model_epoch_{epoch+1}.pth')
+        # model.save_pretrained(f'model_epoch_{epoch+1}')
+        print(f"Model saved at epoch {epoch+1}")
+
 
