@@ -7,12 +7,19 @@ from SAE_train import Autoencoder, filter_none
 import json
 import os
 import pandas as pd
+import argparse
+
+
+parser = argparse.ArgumentParser(description='Transformer Training')
+
+parser.add_argument('-t', '--model_path', type=str, help="Choose the para to predict, choose from 'gdp' or 'trips'", default='gdp')
+args = parser.parse_args()
 
 #load model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = Autoencoder(AutoencoderKL).to(device)
 
-ckpt = torch.load('model_epoch_25.pth')
+ckpt = torch.load(args.model_path)
 model.load_state_dict = ckpt['model_state_dict']
 
 #load samples
@@ -26,7 +33,7 @@ filtered_data_info = filter_none(data_info)
 transform = transforms.Compose([
     transforms.ToTensor(),
 ])
-image_dir = '../rgb'
+image_dir = './rgb'
 image_files = [img for img in os.listdir(image_dir) if img.endswith(('.png', '.jpg', '.jpeg', '.tif'))]
 
 latent_spaces = []

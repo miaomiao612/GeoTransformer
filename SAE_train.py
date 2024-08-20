@@ -9,8 +9,6 @@ from torchvision import datasets, transforms
 from torch.utils.data import Dataset
 from PIL import Image
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-import argparse
-import random
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torchvision.datasets as dset
@@ -30,14 +28,13 @@ class Autoencoder(AutoencoderKL):
         for param in self.encoder.parameters():
             param.requires_grad = False
 
-        # 添加新的卷积层
         self.conv1 = nn.Conv2d(8, 2, kernel_size=3, stride=1, padding=1)
         self.conv2 = nn.Conv2d(1, 4, kernel_size=3, stride=1, padding=1)
 
         self.predictor = nn.Sequential(
             nn.Linear(4096 , 64),
             nn.ReLU(),
-            nn.Linear(64, 12)  # 输出 config 中指定数量的变量
+            nn.Linear(64, 12) 
         )
 
 
@@ -138,8 +135,6 @@ class Img_SC_Dataset(Dataset):
         min_val = np.min(socioeconomic_values)
         max_val = np.max(socioeconomic_values)
         socioeconomic_values = (socioeconomic_values - min_val) / (max_val - min_val + 1e-8)
-        if np.isnan(socioeconomic_values).any():
-            print("警告: 数据中含有NaN!")
 
         return image, socioeconomic_values
 
@@ -149,41 +144,41 @@ transform = transforms.Compose([
       transforms.ToTensor(),
 ])
 
-dataset_train = Img_SC_Dataset(image_dir='../rgb', data_info=filtered_data_info, transform=transform)
+dataset_train = Img_SC_Dataset(image_dir='./rgb', data_info=filtered_data_info, transform=transform)
 dataloader = DataLoader(dataset_train, batch_size=2, shuffle=True)
 
 
 
 ##############
 # delete alpha channel 
-folder_path = "../512"
+# folder_path = "./512"
 
-file_list = os.listdir(folder_path)
+# file_list = os.listdir(folder_path)
 
 
-for file_name in file_list:
+# for file_name in file_list:
 
-    file_path = os.path.join(folder_path, file_name)
+#     file_path = os.path.join(folder_path, file_name)
 
-    if file_name.endswith(".tif"):
+#     if file_name.endswith(".tif"):
 
-        image = Image.open(file_path)
+#         image = Image.open(file_path)
 
-        r, g, b, a = image.split()
+#         r, g, b, a = image.split()
 
-        rgb_image = Image.merge("RGB", (r, g, b))
+#         rgb_image = Image.merge("RGB", (r, g, b))
 
-        new_file_name = file_name
-        new_file_path = os.path.join("../rgb", new_file_name)
-        rgb_image.save(new_file_path)
+#         new_file_name = file_name
+#         new_file_path = os.path.join("../rgb", new_file_name)
+#         rgb_image.save(new_file_path)
 
 #################
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = Autoencoder(AutoencoderKL).to(device)
 
-
-epochs = 25
+curr_epoch = 0
+epochs = 120
 learning_rate = 0.0005
 alpha = 0.5  
 criterion = myLoss(alpha=alpha).to(device)
@@ -191,9 +186,9 @@ optimizer_AE = optim.Adam(model.parameters(), lr=learning_rate)
 scheduler = ReduceLROnPlateau(optimizer_AE, mode='min', factor=0.5, patience=3, verbose=True)
 
 
-ckpt = torch.load('model_epoch_20.pth')
-model.load_state_dict = ckpt['model_state_dict']
-curr_epoch = ckpt['epoch']
+# ckpt = torch.load('model_epoch_20.pth')
+# model.load_state_dict = ckpt['model_state_dict']
+# curr_epoch = ckpt['epoch']
 
 
 # train
@@ -224,7 +219,7 @@ for epoch in range(curr_epoch, epochs):
         # break
     scheduler.step(running_loss / len(dataloader))
     print(f"Epoch [{epoch + 1}/{epochs}], Loss: {running_loss / len(dataloader)}")
-    if (epoch + 1) % 5 == 0:
+    if (epoch + 1) % 10 == 0:
         torch.save({
             'epoch': epoch,
             'model_state_dict': model.state_dict(),
