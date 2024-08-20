@@ -15,20 +15,33 @@ We provide all the related data [here](https://huggingface.co/datasets/GeoTransf
 
 Below is the structure of the dataset directory:
 
-'GeoTransformer/
+GeoTransformer/
+
 │
+
 ├── datasets/                    
+
 │   ├── ACS_results.json           # Census Data
+
 │   ├── Trips_results.json         # Ride-share Demand
+
 │   └── GDP_results.json           # GDP
+
 │
+
 ├── distance_and_latents/ 
+
 │   ├── center_distances.json      # distances between every two urban regions
+
 │   └── latent_space.csv           # urban latent representations
+
 │
+
 └── rgb.zip                   
+
     ├── tile_0_71.tif              # satellite image for each urban region
-    ├── ......             '
+    
+    ├── ......             
 
 
 
