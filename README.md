@@ -12,8 +12,10 @@ pip install Pillow, lpips, diffusers, numpy, pandas, tqdm
 
 ## Datasets
 We provide all the related data [here](https://huggingface.co/datasets/GeoTransformer/geotransformer/tree/main). Satelite images and census data are used for SAE model training and inference. GDP and Ride-share data are the prediction tasks. We also provide the inferenced urban latents and distances matrix for GeoTransformer model training and inferencing.
-Here are the detail files structure:
-GeoTransformer/
+
+Below is the structure of the dataset directory:
+
+'GeoTransformer/
 │
 ├── datasets/                    
 │   ├── ACS_results.json           # Census Data
@@ -26,7 +28,7 @@ GeoTransformer/
 │
 └── rgb.zip                   
     ├── tile_0_71.tif              # satellite image for each urban region
-    ├── ......             
+    ├── ......             '
 
 
 
