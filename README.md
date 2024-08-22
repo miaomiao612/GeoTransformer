@@ -60,10 +60,10 @@ Each input variables can is explained below:
 - **`--knn`** (`int`): Number of query neighbors. Default is 49.
 - **`--l2_regularization`** (`float`): Weight decay factor for regularization. Default is 0.0005.
 - **`--drop_out`** (`float`): Dropout rate for training. Default is 0.05.
-- **`--batch_size`** (`float`): Training batch size. Default is 0.05.
-- **`--learning_rate`** (`float`): Learning rate. Default is 0.05.
-- **`--epoch`** (`float`): Number of training epochs. Default is 0.05.
-- **`--weighting_type`** (`float`): Type of the transformer weighting type, choose from 'Linear', 'IDW','Gaussian'. Default is 0.05.
+- **`--batch_size`** (`float`): Training batch size. Default is 4.
+- **`--learning_rate`** (`float`): Learning rate. Default is 0.01.
+- **`--epoch`** (`float`): Number of training epochs. Default is 60.
+- **`--weighting_type`** (`float`): Type of the transformer weighting type, choose from 'Linear', 'IDW','Gaussian'. Default is 'Linear'.
 - **`--output_dir`** (`float`): The output directory of the models and the the report.
 
 ## Evaluation
