@@ -1,3 +1,14 @@
+#########################################################################
+##   This file is part of the GeoTransformer                           ##
+##                                                                     ##
+##   Copyright (C) 2024 The GeoTransformer Team                        ##
+##   Primary contacts: Yuhao Jia <yuhaojia98@ucla.edu>                 ##
+##                                                                     ##
+##     This program is licensed under the BSD 3-Clause License,        ##
+##        contained in the LICENCE file in this directory.             ##
+##                                                                     ##
+#########################################################################
+
 import json
 import numpy as np
 from sklearn.model_selection import train_test_split
