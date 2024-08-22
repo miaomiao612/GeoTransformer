@@ -1,6 +1,7 @@
 # GeoTransformer
 This is the official implementation of the paper "GeoTransformer: Enhancing Urban Forecasting with Geospatial Attention Mechanism". 
-Please check the [paper](https://arxiv.org/abs/2408.08852).
+
+Check the [paper](https://arxiv.org/abs/2408.08852) here.
 
 ## Dependencies
 First install pytorch associated with your cuda version, for example:
